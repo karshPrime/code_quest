@@ -5,7 +5,7 @@ from codequest22.server.requests import GoalRequest, SpawnRequest
 
 
 def get_team_name():
-    return f"Sample Bot"
+    return f"nEXT_GEN"
 
 my_index = None
 def read_index(player_index, n_players):
@@ -21,6 +21,7 @@ food_workers_limit = {}
 distance = {}
 closest_site = None
 total_ants = 0
+dead_workers = {}
 
 def read_map(md, energy_info):
     global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit
@@ -90,7 +91,7 @@ def handle_failed_requests(requests):
             raise ValueError()
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants
+    global food_workers, my_energy, total_ants, dead_workers
     requests = []
 
     for ev in events:
@@ -113,6 +114,7 @@ def handle_events(events):
             if ev.player_index == my_index:
                 # One of my workers just died :(
                 total_ants -= 1
+                food_workers[dead_workers[ev.ant_id]] -= 1
 
     spawned_this_tick = 0
 
@@ -144,4 +146,5 @@ def send_worker_ant(ant_id=None):
     if ant_id == None:
         return SpawnRequest(AntTypes.WORKER, id=None, color=None, goal=food[i])
     else:
+        dead_workers[ant_id] = food[i]
         return GoalRequest(ant_id, position=food[i])
