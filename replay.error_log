@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Python310\lib\site-packages\codequest22\server\__init__.py", line 176, in start_server
+    ant_obj.set_goal(req.goal)
+  File "C:\Python310\lib\site-packages\codequest22\server\ant.py", line 99, in set_goal
+    self._follow_path = GlobalMap.get_path(pos, self.goal)[::-1]
+  File "C:\Python310\lib\site-packages\codequest22\server\global_map.py", line 64, in get_path
+    if cls.map_obj[round(p1[0])][round(p1[1])] == "W" or cls.map_obj[round(p2[0])][round(p2[1])] == "W":
+IndexError: list index out of range
