@@ -209,17 +209,19 @@ def handle_events(events):
     # Can I spawn ants?
     i = 0
     while (
-        i < len(new_fighters) and
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
-        my_energy >= stats.ants.Fighter.COST and
+        my_energy >= stats.ants.Fighter.COST + 100 and
         fighter_to_spawn_this_tick > 0
     ):
-        ant_id, fighter_id, ant_pos = new_fighters[i]
-        fighters[ant_id].append(fighter_id)
-        requests.append(SpawnRequest(AntTypes.FIGHTER, id=fighter_id, color=None, goal=ant_pos))
+        if i < len(new_fighters):
+            ant_id, fighter_id, ant_pos = new_fighters[i]
+            fighters[ant_id].append(fighter_id)
+            requests.append(SpawnRequest(AntTypes.FIGHTER, id=fighter_id, color=None, goal=ant_pos))
+            i += 1
+        else:
+            requests.append(SpawnRequest(AntTypes.FIGHTER, color=None, goal=strategic_location))
 
         my_energy -= stats.ants.Fighter.COST        
-        i += 1
         fighter_to_spawn_this_tick -= 1
         total_ants += 1
     while (
@@ -243,7 +245,6 @@ def handle_events(events):
         # Spawn an ant, give it some id, no color, and send it to the closest site.
         # I will pay the base cost for this ant, so cost=None.
         requests.append(SpawnRequest(AntTypes.SETTLER, color=(14, 255, 255), goal=strategic_location))
-        print("Settling: " + str(strategic_location))
 
         my_energy -= stats.ants.Settler.COST
 
