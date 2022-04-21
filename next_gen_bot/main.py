@@ -1,9 +1,14 @@
 from random import Random, random
 from codequest22.server.ant import AntTypes
 import codequest22.stats as stats
-from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent
+from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent, MoveEvent
 from codequest22.server.requests import GoalRequest, SpawnRequest
+from collections import defaultdict
 
+FIGHTER_RADIUS_MULT = 10
+
+fighters = defaultdict(list)
+fighter_id = 10000
 
 def get_team_name():
     return f"nEXT_GEN"
@@ -105,8 +110,10 @@ def handle_failed_requests(requests):
             print(f"Request {req.__class__.__name__} failed. Reason: {req.reason}.")
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill
+    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id
     requests = []
+    new_fighters = []
+
 
     print ("\n"+str(my_energy)+"\n")
     queen_ant_attacked = False
@@ -134,6 +141,16 @@ def handle_events(events):
                     food_workers[dead_workers[ev.ant_id]] -= 1
                 except:
                     pass
+            if ev.ant_id in fighters:
+                # Set fighters to new target
+                fs = fighters.pop(ev.ant_id)
+                if len(fighters) == 0:
+                    # No targets left, just go home
+                    for f in fs:
+                        requests.append(GoalRequest(f, spawns[my_index]))
+                else:
+                    fighters[list(fighters.keys())[0]] += fs    
+                
         elif isinstance(ev, QueenAttackEvent):
             if ev.queen_player_index == my_index:
                 queen_ant_attacked = True
@@ -143,6 +160,26 @@ def handle_events(events):
             hill_active = True
         elif isinstance(ev, ZoneDeactivateEvent):
             hill_active = False
+            
+        elif isinstance(ev, MoveEvent):
+            if ev.player_index != my_index:
+                if ev.ant_id in fighters:
+                    # Adjust fighter positions
+                    for f in fighters[ev.ant_id]:
+                        requests.append(GoalRequest(f, ev.position))
+                    continue
+
+                if ev.ant_str['classname'] != 'FighterAnt':
+                    continue
+
+                x, y = spawns[my_index]
+                e_x, e_y = ev.position
+                d = (x - e_x)**2 + (y - e_y)**2
+
+                if d < (stats.ants.Fighter.RANGE * FIGHTER_RADIUS_MULT)**2:
+                    # Track this fighter ant 
+                    new_fighters.append((ev.ant_id, fighter_id, ev.position))
+                    fighter_id += 1
 
     strategic_location = (0,0)
 
@@ -170,19 +207,21 @@ def handle_events(events):
     fighter_to_spawn_this_tick = int(STRATEGY[curr_strat][1] * stats.general.MAX_SPAWNS_PER_TICK/100)
     settler_to_spawn_this_tick = int(STRATEGY[curr_strat][2] * stats.general.MAX_SPAWNS_PER_TICK/100)
     # Can I spawn ants?
-
+    i = 0
     while (
+        i < len(new_fighters) and
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
         my_energy >= stats.ants.Fighter.COST and
         fighter_to_spawn_this_tick > 0
     ):
+        ant_id, fighter_id, ant_pos = new_fighters[i]
+        fighters[ant_id].append(fighter_id)
+        requests.append(SpawnRequest(AntTypes.FIGHTER, id=fighter_id, color=None, goal=ant_pos))
+
+        my_energy -= stats.ants.Fighter.COST        
+        i += 1
         fighter_to_spawn_this_tick -= 1
         total_ants += 1
-        # Spawn an ant, give it some id, no color, and send it to the closest site.
-        # I will pay the base cost for this ant, so cost=None.
-        requests.append(SpawnRequest(AntTypes.FIGHTER, id=None, color=(14, 255, 0), goal=strategic_location))
-        print("Attacking: " + str(strategic_location))
-        my_energy -= stats.ants.Fighter.COST
     while (
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
         my_energy >= stats.ants.Worker.COST and
