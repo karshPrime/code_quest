@@ -7,7 +7,7 @@ from collections import defaultdict
 
 FIGHTER_RADIUS_MULT = 10
 
-fighters = defaultdict(list)
+fighters = defaultdict(set)
 fighter_id = 10000
 
 def get_team_name():
@@ -112,12 +112,15 @@ def handle_failed_requests(requests):
     global my_energy
     for req in requests:
         if req.player_index == my_index:
-            print(f"Request {req.__class__.__name__} failed. Reason: {req.reason}.")
+            print(f"Medic: Request {req.__class__.__name__} failed. Reason: {req.reason}.")
 
 def handle_events(events):
     global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei
     requests = []
     new_fighters = []
+    to_send_home = set()
+    dead_fighters = set()
+    to_move = set()
 
 
     print ("\n"+str(my_energy)+"\n")
@@ -146,15 +149,25 @@ def handle_events(events):
                     food_workers[dead_workers[ev.ant_id]] -= 1
                 except:
                     pass
+
+                if ev.ant_id in to_send_home:
+                    to_send_home.remove(ev.ant_id)
+
+                for k, v in fighters.items():
+                    if ev.ant_id in v:
+                        fighters[k].remove(ev.ant_id)
+                        dead_fighters.add(ev.ant_id)
+
             if ev.ant_id in fighters:
                 # Set fighters to new target
                 fs = fighters.pop(ev.ant_id)
                 if len(fighters) == 0:
                     # No targets left, just go home
                     for f in fs:
-                        requests.append(GoalRequest(f, spawns[my_index]))
+                        # We're not sure if our buddy is dead so lets wait till we have have seen all events before moving him
+                        to_send_home.add(f)
                 else:
-                    fighters[list(fighters.keys())[0]] += fs    
+                    fighters[list(fighters.keys())[0]] = fighters[list(fighters.keys())[0]].union(fs)
                 
         elif isinstance(ev, QueenAttackEvent):
             if ev.queen_player_index == my_index:
@@ -171,7 +184,8 @@ def handle_events(events):
                 if ev.ant_id in fighters:
                     # Adjust fighter positions
                     for f in fighters[ev.ant_id]:
-                        requests.append(GoalRequest(f, ev.position))
+                        # We also don't know if these guys are dead
+                        to_move.add((f, ev.position))
                     continue
 
                 if ev.ant_str['classname'] != 'FighterAnt':
@@ -189,7 +203,16 @@ def handle_events(events):
         elif isinstance(ev, FoodTileActiveEvent):
             charged[ev.pos] = ev.num_ticks
         elif isinstance(ev, FoodTileDeactivateEvent):
-            charged[ev.pos].pop()
+            charged.pop(ev.pos)
+
+    # Send our wounded veterans home
+    for t in to_send_home:
+        requests.append(GoalRequest(t, spawns[my_index]))
+
+    # Move fighters who have targets that have also moved
+    for f, pos in to_move:
+        if f not in dead_fighters:
+            requests.append(GoalRequest(f, pos))
 
     strategic_location = (0,0)
 
@@ -228,7 +251,7 @@ def handle_events(events):
     ):
         if i < len(new_fighters):
             ant_id, f_id, ant_pos = new_fighters[i]
-            fighters[ant_id].append(f_id)
+            fighters[ant_id].add(f_id)
             requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
             i += 1
         else:
