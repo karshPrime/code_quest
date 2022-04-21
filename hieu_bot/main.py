@@ -1,6 +1,7 @@
+from random import Random, random
 from codequest22.server.ant import AntTypes
 import codequest22.stats as stats
-from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent
+from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent
 from codequest22.server.requests import GoalRequest, SpawnRequest
 
 
@@ -22,9 +23,23 @@ distance = {}
 closest_site = None
 total_ants = 0
 dead_workers = {}
+STRATEGY = {
+    "Early_game": [80,20,0],
+    "Attacked": [20, 80,0],
+    "Far_hill": [40, 40,20],
+    "Close_hill": [20,40,40],
+    "Rush": [20,80,0],
+    "Econ_And_Harass": [60,40,0]
+}
+curr_strat = "Early_game"
+
+hill_active = False
+first_hill_active = False
+curr_hill = (0,0)
+enemy_cords = [None]*3
 
 def read_map(md, energy_info):
-    global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit
+    global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit, enemy_cords
     map_data = md
     for y in range(len(map_data)):
         for x in range(len(map_data[0])):
@@ -81,20 +96,20 @@ def read_map(md, energy_info):
     closest_site = food[0]
     for food_place in food:
         food_workers_limit[food_place] = stats.energy.PER_TICK + (distance[food_place]/stats.ants.Worker.SPEED / stats.energy.DELAY)
+    enemy_cords = [x for x in spawns if x != spawns[my_index]]
 
 def handle_failed_requests(requests):
     global my_energy
     for req in requests:
         if req.player_index == my_index:
             print(f"Request {req.__class__.__name__} failed. Reason: {req.reason}.")
-            raise ValueError()
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants, dead_workers
+    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill
     requests = []
 
     print ("\n"+str(my_energy)+"\n")
-
+    queen_ant_attacked = False
 
     for ev in events:
         if isinstance(ev, DepositEvent):
@@ -119,22 +134,90 @@ def handle_events(events):
                     food_workers[dead_workers[ev.ant_id]] -= 1
                 except:
                     pass
+        elif isinstance(ev, QueenAttackEvent):
+            if ev.queen_player_index == my_index:
+                queen_ant_attacked = True
+        elif isinstance(ev, ZoneActiveEvent):
+            first_hill_active = True
+            curr_hill = ev.points
+            hill_active = True
+        elif isinstance(ev, ZoneDeactivateEvent):
+            hill_active = False
 
-    spawned_this_tick = 0
+    strategic_location = (0,0)
 
+    if queen_ant_attacked:
+        strategic_location = spawns[my_index]
+        curr_strat = "Attacked"
+    elif hill_active:
+        strategic_location = curr_hill[0]
+        curr_strat = "Close_hill"
+    elif (
+        my_energy >= stats.general.MAX_ENERGY_STORED - 50 or
+        (curr_strat == "Rush" and my_energy >= 100)
+    ):
+        strategic_location = enemy_cords[0]
+        print ("Rush")
+        curr_strat = "Rush"
+    elif not first_hill_active:
+        strategic_location = enemy_cords[0]        
+        curr_strat = "Early_game"
+    else:
+        strategic_location = enemy_cords[0]
+        curr_strat = "Econ_And_Harass"
+
+    worker_to_spawn_this_tick = int(STRATEGY[curr_strat][0] * stats.general.MAX_SPAWNS_PER_TICK/100)
+    fighter_to_spawn_this_tick = int(STRATEGY[curr_strat][1] * stats.general.MAX_SPAWNS_PER_TICK/100)
+    settler_to_spawn_this_tick = int(STRATEGY[curr_strat][2] * stats.general.MAX_SPAWNS_PER_TICK/100)
     # Can I spawn ants?
+
     while (
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
-        spawned_this_tick < stats.general.MAX_SPAWNS_PER_TICK and
-        my_energy >= stats.ants.Worker.COST
+        my_energy >= stats.ants.Fighter.COST and
+        fighter_to_spawn_this_tick > 0
     ):
-        spawned_this_tick += 1
+        fighter_to_spawn_this_tick -= 1
+        total_ants += 1
+        # Spawn an ant, give it some id, no color, and send it to the closest site.
+        # I will pay the base cost for this ant, so cost=None.
+        requests.append(SpawnRequest(AntTypes.FIGHTER, id=None, color=(14, 255, 0), goal=strategic_location))
+        print("Attacking: " + str(strategic_location))
+        my_energy -= stats.ants.Fighter.COST
+    while (
+        total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
+        my_energy >= stats.ants.Worker.COST and
+        worker_to_spawn_this_tick > 0
+    ):
+        worker_to_spawn_this_tick -= 1
         total_ants += 1
         # Spawn an ant, give it some id, no color, and send it to the closest site.
         # I will pay the base cost for this ant, so cost=None.
         requests.append(send_worker_ant())
 
+    while (
+        total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
+        my_energy >= stats.ants.Settler.COST and
+        settler_to_spawn_this_tick > 0
+    ):
+        settler_to_spawn_this_tick -= 1
+        total_ants += 1
+        # Spawn an ant, give it some id, no color, and send it to the closest site.
+        # I will pay the base cost for this ant, so cost=None.
+        requests.append(SpawnRequest(AntTypes.SETTLER, color=(14, 255, 255), goal=strategic_location))
+        print("Settling: " + str(strategic_location))
+
+        my_energy -= stats.ants.Settler.COST
+
+
     return requests
+
+def get_patrol_location():
+    i = 0
+    while (i < len(food) and food_workers[food[i]] > food_workers_limit[food[i]]):
+        i += 1
+    if (i == len(food)):
+        i = 0
+    return food[i]
 
 def send_worker_ant(ant_id=None):
     global food_workers, my_energy
