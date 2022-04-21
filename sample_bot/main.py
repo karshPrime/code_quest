@@ -1,6 +1,6 @@
 from codequest22.server.ant import AntTypes
 import codequest22.stats as stats
-from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent
+from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent
 from codequest22.server.requests import GoalRequest, SpawnRequest
 
 
@@ -104,6 +104,17 @@ def handle_events(events):
                 total_ants -= 1
 
     spawned_this_tick = 0
+
+    if (
+        total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
+        spawned_this_tick < stats.general.MAX_SPAWNS_PER_TICK and
+        my_energy >= stats.ants.Fighter.COST
+    ):
+        spawned_this_tick += 1
+        total_ants += 1
+        enemy_coords = [x for x in spawns if x != my_index]
+        requests.append(SpawnRequest(AntTypes.FIGHTER, id=None, color=None, goal=enemy_coords[0]))
+        my_energy -= stats.ants.Fighter.COST
 
     # Can I spawn ants?
     while (

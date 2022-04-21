@@ -1,6 +1,6 @@
 from codequest22.server.ant import AntTypes
 import codequest22.stats as stats
-from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent
+from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent
 from codequest22.server.requests import GoalRequest, SpawnRequest
 
 
@@ -81,7 +81,6 @@ def read_map(md, energy_info):
     closest_site = food[0]
     for food_place in food:
         food_workers_limit[food_place] = stats.energy.PER_TICK + (distance[food_place]/stats.ants.Worker.SPEED / stats.energy.DELAY)
-    print ("food: " + str(len(food)))
 
 def handle_failed_requests(requests):
     global my_energy
@@ -94,18 +93,20 @@ def handle_events(events):
     global food_workers, my_energy, total_ants, dead_workers
     requests = []
 
+    print ("\n"+str(my_energy)+"\n")
+
+
     for ev in events:
         if isinstance(ev, DepositEvent):
             if ev.player_index == my_index:
                 # One of my worker ants just made it back to the Queen! Let's send them back to the food site.
                 requests.append(send_worker_ant(ev.ant_id))
                 # Additionally, let's update how much energy I've got.
-                my_energy = ev.cur_energy
+                my_energy = ev.total_energy
         elif isinstance(ev, ProductionEvent):
             if ev.player_index == my_index:
                 # One of my worker ants just made it to the food site! Let's send them back to the Queen.
                 food_location = (round((ev.ant_str['info']['position'][1])), round((ev.ant_str['info']['position'][0])))
-                print("reached location" + str(food_location))
 
                 food_workers[food_location] -= 1
 
@@ -114,7 +115,10 @@ def handle_events(events):
             if ev.player_index == my_index:
                 # One of my workers just died :(
                 total_ants -= 1
-                food_workers[dead_workers[ev.ant_id]] -= 1
+                try:
+                    food_workers[dead_workers[ev.ant_id]] -= 1
+                except:
+                    pass
 
     spawned_this_tick = 0
 
@@ -129,13 +133,11 @@ def handle_events(events):
         # Spawn an ant, give it some id, no color, and send it to the closest site.
         # I will pay the base cost for this ant, so cost=None.
         requests.append(send_worker_ant())
-        my_energy -= stats.ants.Worker.COST
 
-    print (food_workers)
     return requests
 
 def send_worker_ant(ant_id=None):
-    global food_workers
+    global food_workers, my_energy
     i = 0
     while (i < len(food) and food_workers[food[i]] > food_workers_limit[food[i]]):
         i += 1
@@ -144,6 +146,7 @@ def send_worker_ant(ant_id=None):
 
     food_workers[food[i]] += 1
     if ant_id == None:
+        my_energy -= stats.ants.Worker.COST
         return SpawnRequest(AntTypes.WORKER, id=None, color=None, goal=food[i])
     else:
         dead_workers[ant_id] = food[i]
