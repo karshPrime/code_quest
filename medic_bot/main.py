@@ -227,9 +227,9 @@ def handle_events(events):
         fighter_to_spawn_this_tick > 0
     ):
         if i < len(new_fighters):
-            ant_id, fighter_id, ant_pos = new_fighters[i]
-            fighters[ant_id].append(fighter_id)
-            requests.append(SpawnRequest(AntTypes.FIGHTER, id=fighter_id, color=None, goal=ant_pos))
+            ant_id, f_id, ant_pos = new_fighters[i]
+            fighters[ant_id].append(f_id)
+            requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
             i += 1
         else:
             requests.append(SpawnRequest(AntTypes.FIGHTER, color=None, goal=strategic_location))
@@ -276,12 +276,12 @@ def get_possible_food():
         return 0
 
     best_i = (0, 0)
-    for f in fs:
+    for i, f in enumerate(fs):
         if food[f] in charged:
             if ei[food[f]] * 2 > best_i[1]:
-                best_i = f, ei[food[f]] * 2 
+                best_i = i, ei[food[f]] * 2
 
-    return best_i[0]
+    return fs[best_i[0]]
 
 def get_patrol_location():
     i = get_possible_food()
