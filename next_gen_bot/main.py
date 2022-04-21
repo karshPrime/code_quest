@@ -210,7 +210,10 @@ def handle_events(events):
     i = 0
     while (
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
-        my_energy >= stats.ants.Fighter.COST + 100 and
+        (
+            my_energy >= stats.ants.Fighter.COST + 100 or
+            (len(new_fighters) > 0 and my_energy >= stats.ants.Fighter.COST)
+        ) and
         fighter_to_spawn_this_tick > 0
     ):
         if i < len(new_fighters):
