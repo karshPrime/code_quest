@@ -44,7 +44,7 @@ first_hill_active = False
 curr_hill = (0,0)
 time_hill_active = 0
 enemy_cords = [None]*3
-hill_points = defaultdict(int)
+hill_points = {}
 defeated = set()
 
 charged = {}
@@ -232,6 +232,10 @@ def handle_events(events):
         elif isinstance(ev, SettlerScoreEvent):
             if ev.player_index != my_index:
                 hill_points[ev.player_index] += ev.score_amount
+        elif isinstance(ev, SpawnEvent):
+            if ev.player_index != my_index:
+                if ev.player_index not in hill_points:
+                    hill_points[ev.player_index] = 0
 
     # Send our wounded veterans home
     for t in to_send_home:
@@ -345,17 +349,13 @@ def handle_events(events):
 
 def get_highest_score_index():
     if len(hill_points) == 0:
-        best_nei = None
+        return [i for i, x in enumerate(spawns) if i != my_index][0]
 
-        for i, p in enumerate(spawns):
-            if i != my_index and i not in defeated:
-                if best_nei == None:
-                    best_nei = (i, distance[p])
-                else:
-                    if distance[p] < best_nei[1]:
-                        best_nei = (i, distance[p])
+    have_points = [x for x in hill_points.values() if x > 0]
+    if len(have_points) == 0:
+        d = sorted([(distance[spawns[x]], x) for x in hill_points.keys() if x != my_index and x not in defeated], key=lambda k: k[0])
 
-        return best_nei[0]
+        return d[0][1]
 
     return max(hill_points, key=hill_points.get)
 
