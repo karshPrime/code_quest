@@ -1,7 +1,7 @@
 from random import Random, random
 from codequest22.server.ant import AntTypes
 import codequest22.stats as stats
-from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent, MoveEvent, FoodTileDeactivateEvent, FoodTileActiveEvent
+from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent, MoveEvent, FoodTileDeactivateEvent, FoodTileActiveEvent, TeamDefeatedEvent
 from codequest22.server.requests import GoalRequest, SpawnRequest
 from collections import defaultdict
 
@@ -34,17 +34,26 @@ STRATEGY = {
     "Far_hill": [40, 40,20],
     "Close_hill": [20,40,40],
     "Rush": [20,80,0],
-    "Econ_And_Harass": [60,40,0]
+    "Econ_And_Harass": [60,40,0],
+    "Snipe": [40,60,0]
 }
 curr_strat = "Early_game"
 
 hill_active = False
 first_hill_active = False
 curr_hill = (0,0)
+time_hill_active = 0
 enemy_cords = [None]*3
 
 charged = {}
 ei = {}
+
+snipe_target = []
+
+snipe_squad = []
+
+CLOSE_HILL_THRESHOLD = 50
+SNIPE_THRESHOLD = 20
 
 def read_map(md, energy_info):
     global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit, enemy_cords, ei
@@ -115,15 +124,13 @@ def handle_failed_requests(requests):
             print(f"Medic: Request {req.__class__.__name__} failed. Reason: {req.reason}.")
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei
+    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, time_hill_active, snipe_target, snipe_squad
     requests = []
     new_fighters = []
     to_send_home = set()
     dead_fighters = set()
     to_move = set()
 
-
-    print ("\n"+str(my_energy)+"\n")
     queen_ant_attacked = False
 
     for ev in events:
@@ -153,6 +160,9 @@ def handle_events(events):
                 if ev.ant_id in to_send_home:
                     to_send_home.remove(ev.ant_id)
 
+                if ev.ant_id in snipe_squad:
+                    snipe_squad.remove(ev.ant_id)
+
                 for k, v in fighters.items():
                     if ev.ant_id in v:
                         fighters[k].remove(ev.ant_id)
@@ -172,10 +182,14 @@ def handle_events(events):
         elif isinstance(ev, QueenAttackEvent):
             if ev.queen_player_index == my_index:
                 queen_ant_attacked = True
+            elif ev.queen_hp < stats.general.QUEEN_HEALTH * SNIPE_THRESHOLD / 100:
+                if not ev.queen_player_index in snipe_target:
+                    snipe_target.append(ev.queen_player_index)
         elif isinstance(ev, ZoneActiveEvent):
             first_hill_active = True
-            curr_hill = ev.points
+            curr_hill = ev.points[0]
             hill_active = True
+            time_hill_active = ev.num_ticks
         elif isinstance(ev, ZoneDeactivateEvent):
             hill_active = False
             
@@ -204,6 +218,8 @@ def handle_events(events):
             charged[ev.pos] = ev.num_ticks
         elif isinstance(ev, FoodTileDeactivateEvent):
             charged.pop(ev.pos)
+        elif isinstance(ev, TeamDefeatedEvent):
+            snipe_target.remove(ev.defeated_index)
 
     # Send our wounded veterans home
     for t in to_send_home:
@@ -219,15 +235,27 @@ def handle_events(events):
     if queen_ant_attacked:
         strategic_location = spawns[my_index]
         curr_strat = "Attacked"
+    elif (
+        len(snipe_target) > 0 and
+        my_energy >= 100
+    ):
+        curr_strat = "Snipe"
+        strategic_location = spawns[snipe_target[0]]
     elif hill_active:
-        strategic_location = curr_hill[0]
-        curr_strat = "Close_hill"
+        if (
+            (distance[curr_hill]/stats.ants.Settler.SPEED) > stats.ants.Settler.LIFESPAN*CLOSE_HILL_THRESHOLD/100 or
+            (distance[curr_hill]/stats.ants.Settler.SPEED) > time_hill_active*CLOSE_HILL_THRESHOLD/100
+        ):
+            strategic_location = curr_hill
+            curr_strat = "Far_hill"
+        else:
+            strategic_location = curr_hill
+            curr_strat = "Close_hill"
     elif (
         my_energy >= stats.general.MAX_ENERGY_STORED - 50 or
         (curr_strat == "Rush" and my_energy >= 100)
     ):
         strategic_location = enemy_cords[0]
-        print ("Rush")
         curr_strat = "Rush"
     elif not first_hill_active:
         strategic_location = enemy_cords[0]        
@@ -236,6 +264,7 @@ def handle_events(events):
         strategic_location = enemy_cords[0]
         curr_strat = "Econ_And_Harass"
 
+    print (curr_strat)
     worker_to_spawn_this_tick = int(STRATEGY[curr_strat][0] * stats.general.MAX_SPAWNS_PER_TICK/100)
     fighter_to_spawn_this_tick = int(STRATEGY[curr_strat][1] * stats.general.MAX_SPAWNS_PER_TICK/100)
     settler_to_spawn_this_tick = int(STRATEGY[curr_strat][2] * stats.general.MAX_SPAWNS_PER_TICK/100)
@@ -254,6 +283,11 @@ def handle_events(events):
             fighters[ant_id].add(f_id)
             requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
             i += 1
+        elif curr_strat=="Snipe":
+            id = "Snipe-"+str(fighter_id)
+            requests.append(SpawnRequest(AntTypes.FIGHTER, id=id))
+            fighter_id+=1
+            snipe_squad.append(id)
         else:
             requests.append(SpawnRequest(AntTypes.FIGHTER, color=None, goal=strategic_location))
 
@@ -284,9 +318,17 @@ def handle_events(events):
 
         my_energy -= stats.ants.Settler.COST
 
+    for snipers in snipe_squad:
+        if (len(snipe_target)>0):
+            requests.append(GoalRequest(snipers, spawns[snipe_target[0]]))
+        else:
+            requests.append(GoalRequest(snipers, strategic_location))
     
     for k in charged.keys():
         charged[k] -= 1
+
+    if hill_active:
+        time_hill_active -= 1
     return requests
 
 def get_possible_food():

@@ -114,8 +114,6 @@ def handle_events(events):
     requests = []
     new_fighters = []
 
-
-    print ("\n"+str(my_energy)+"\n")
     queen_ant_attacked = False
 
     for ev in events:
@@ -194,7 +192,6 @@ def handle_events(events):
         (curr_strat == "Rush" and my_energy >= 100)
     ):
         strategic_location = enemy_cords[0]
-        print ("Rush")
         curr_strat = "Rush"
     elif not first_hill_active:
         strategic_location = enemy_cords[0]        
