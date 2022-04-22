@@ -227,6 +227,8 @@ def handle_events(events):
                 hill_points[ev.by_index] = ev.new_hill_score
 
             defeated.add(ev.defeated_index)
+
+            print(snipe_target)
         elif isinstance(ev, SettlerScoreEvent):
             if ev.player_index != my_index:
                 hill_points[ev.player_index] += ev.score_amount
@@ -274,7 +276,6 @@ def handle_events(events):
         strategic_location = spawns[get_highest_score_index()]
         curr_strat = "Econ_And_Harass"
 
-    print (curr_strat)
     worker_to_spawn_this_tick = int(STRATEGY[curr_strat][0] * stats.general.MAX_SPAWNS_PER_TICK/100)
     fighter_to_spawn_this_tick = int(STRATEGY[curr_strat][1] * stats.general.MAX_SPAWNS_PER_TICK/100)
     settler_to_spawn_this_tick = int(STRATEGY[curr_strat][2] * stats.general.MAX_SPAWNS_PER_TICK/100)
