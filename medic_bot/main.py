@@ -259,13 +259,13 @@ def handle_events(events):
         my_energy >= stats.general.MAX_ENERGY_STORED - 50 or
         (curr_strat == "Rush" and my_energy >= 100)
     ):
-        strategic_location = enemy_cords[0]
+        strategic_location = spawns[get_highest_score_index()]
         curr_strat = "Rush"
     elif not first_hill_active:
-        strategic_location = enemy_cords[0]        
+        strategic_location = spawns[get_highest_score_index()]      
         curr_strat = "Early_game"
     else:
-        strategic_location = enemy_cords[0]
+        strategic_location = spawns[get_highest_score_index()]
         curr_strat = "Econ_And_Harass"
 
     print (curr_strat)
