@@ -170,9 +170,9 @@ def handle_events(events):
                         fighters[k].remove(ev.ant_id)
                         dead_fighters.add(ev.ant_id)
 
-            if ev.ant_id in fighters:
+            if (ev.ant_id, ev.player_index) in fighters:
                 # Set fighters to new target
-                fs = fighters.pop(ev.ant_id)
+                fs = fighters.pop((ev.ant_id, ev.player_index))
                 if len(fighters) == 0:
                     # No targets left, just go home
                     for f in fs:
@@ -197,9 +197,9 @@ def handle_events(events):
             
         elif isinstance(ev, MoveEvent):
             if ev.player_index != my_index:
-                if ev.ant_id in fighters:
+                if (ev.ant_id, ev.player_index) in fighters:
                     # Adjust fighter positions
-                    for f in fighters[ev.ant_id]:
+                    for f in fighters[(ev.ant_id, ev.player_index)]:
                         # We also don't know if these guys are dead
                         to_move.add((f, ev.position))
                     continue
@@ -213,7 +213,7 @@ def handle_events(events):
 
                 if d < (stats.ants.Fighter.RANGE * FIGHTER_RADIUS_MULT)**2:
                     # Track this fighter ant 
-                    new_fighters.append((ev.ant_id, fighter_id, ev.position))
+                    new_fighters.append((ev.ant_id, ev.player_index, fighter_id, ev.position))
                     fighter_id += 1
 
         elif isinstance(ev, FoodTileActiveEvent):
@@ -289,8 +289,8 @@ def handle_events(events):
         fighter_to_spawn_this_tick > 0
     ):
         if i < len(new_fighters):
-            ant_id, f_id, ant_pos = new_fighters[i]
-            fighters[ant_id].add(f_id)
+            ant_id, p_id, f_id, ant_pos = new_fighters[i]
+            fighters[(ant_id, p_id)].add(f_id)
             requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
             i += 1
         elif curr_strat=="Snipe":
