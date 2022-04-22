@@ -193,6 +193,11 @@ def handle_events(events):
             elif ev.queen_hp < stats.general.QUEEN_HEALTH * SNIPE_THRESHOLD / 100 and ev.queen_hp > 0 and not ev.queen_player_index in defeated:
                 if not ev.queen_player_index in snipe_target:
                     snipe_target.append(ev.queen_player_index)
+
+            if ev.queen_hp <= 0:
+                if ev.queen_player_index in snipe_target:
+                    snipe_target.remove(ev.queen_player_index)
+                defeated.add(ev.queen_player_index)
         elif isinstance(ev, ZoneActiveEvent):
             first_hill_active = True
             curr_hill = ev.points[0]
