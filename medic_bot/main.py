@@ -45,6 +45,7 @@ curr_hill = (0,0)
 time_hill_active = 0
 enemy_cords = [None]*3
 hill_points = defaultdict(int)
+defeated = set()
 
 charged = {}
 ei = {}
@@ -125,7 +126,7 @@ def handle_failed_requests(requests):
             print(f"Medic: Request {req.__class__.__name__} failed. Reason: {req.reason}.")
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, time_hill_active, snipe_target, snipe_squad, hill_points
+    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, time_hill_active, snipe_target, snipe_squad, hill_points, defeated
     requests = []
     new_fighters = []
     to_send_home = set()
@@ -221,6 +222,11 @@ def handle_events(events):
             charged.pop(ev.pos)
         elif isinstance(ev, TeamDefeatedEvent):
             snipe_target.remove(ev.defeated_index)
+
+            if ev.by_index != my_index:
+                hill_points[ev.by_index] = ev.new_hill_score
+
+            defeated.add(ev.defeated_index)
         elif isinstance(ev, SettlerScoreEvent):
             if ev.player_index != my_index:
                 hill_points[ev.player_index] += ev.score_amount
@@ -337,7 +343,17 @@ def handle_events(events):
 
 def get_highest_score_index():
     if len(hill_points) == 0:
-        return None
+        best_nei = None
+
+        for i, p in enumerate(spawns):
+            if i != my_index and i not in defeated:
+                if best_nei == None:
+                    best_nei = (i, distance[p])
+                else:
+                    if distance[p] < best_nei[1]:
+                        best_nei = (i, distance[p])
+
+        return best_nei[0]
 
     return max(hill_points, key=hill_points.get)
 
