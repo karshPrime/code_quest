@@ -229,6 +229,9 @@ def handle_events(events):
         elif isinstance(ev, TeamDefeatedEvent):
             if ev.defeated_index in snipe_target:
                 snipe_target.remove(ev.defeated_index)
+
+            if ev.defeated_index in hill_points:
+                hill_points.pop(ev.defeated_index)
             
             if ev.by_index != my_index:
                 hill_points[ev.by_index] = ev.new_hill_score
@@ -239,7 +242,7 @@ def handle_events(events):
                 hill_points[ev.player_index] += ev.score_amount
         elif isinstance(ev, SpawnEvent):
             if ev.player_index != my_index:
-                if ev.player_index not in hill_points:
+                if ev.player_index not in hill_points and ev.player_index not in defeated:
                     hill_points[ev.player_index] = 0
 
     # Send our wounded veterans home

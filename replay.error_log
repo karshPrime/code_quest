@@ -1,20 +1,13 @@
 Traceback (most recent call last):
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/visual/game.py", line 166, in run_visual
-    GameStateHandler.init()
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/visual/game.py", line 49, in init
-    cls.sm = ScreenManager(*cls.SCREEN_RES)
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/visual/screen.py", line 121, in __init__
-    super().__init__(width, height, title)
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/arcade/application.py", line 125, in __init__
-    super().__init__(width=width, height=height, caption=title,
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/window/xlib/__init__.py", line 168, in __init__
-    super(XlibWindow, self).__init__(*args, **kwargs)
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/window/__init__.py", line 561, in __init__
-    context = config.create_context(gl.current_context)
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/gl/xlib.py", line 204, in create_context
-    return XlibContextARB(self, share)
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/gl/xlib.py", line 314, in __init__
-    super(XlibContext13, self).__init__(config, share)
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/gl/xlib.py", line 218, in __init__
-    raise gl.ContextException('Could not create GL context')
-pyglet.gl.ContextException: Could not create GL context
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/client/__init__.py", line 11, in run_client
+    runner.load_bot(bot_path)
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/client/runner.py", line 58, in load_bot
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 844, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 981, in get_code
+  File "<frozen importlib._bootstrap_external>", line 911, in source_to_code
+  File "<frozen importlib._bootstrap>", line 219, in _call_with_frames_removed
+  File "/home/aqua/code/code_quest/code_quest/medic_bot/main.py", line 245
+    if ev.player_index not in hill_points and in ev.player_index not in defeated:
+                                              ^
+SyntaxError: invalid syntax
