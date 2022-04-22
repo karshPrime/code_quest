@@ -177,6 +177,12 @@ def handle_events(events):
                     # No targets left, just go home
                     for f in fs:
                         # We're not sure if our buddy is dead so lets wait till we have have seen all events before moving him
+                        to_remove_move = []
+                        for (ff, pos) in to_move:
+                            if ff == f:
+                                to_remove_move.append((ff, pos))
+                        for ff in to_remove_move:
+                            to_move.remove(ff)
                         to_send_home.add(f)
                 else:
                     fighters[list(fighters.keys())[0]] = fighters[list(fighters.keys())[0]].union(fs)
@@ -347,7 +353,7 @@ def handle_events(events):
 
 def get_highest_score_index():
     if len(hill_points) == 0:
-        return [i for i, x in enumerate(spawns) if i != my_index][0]
+        return [i for i, x in enumerate(spawns) if i != my_index and i not in defeated][0]
 
     have_points = [x for x in hill_points.values() if x > 0]
     if len(have_points) == 0:
@@ -355,7 +361,8 @@ def get_highest_score_index():
 
         return d[0][1]
 
-    return max(hill_points, key=hill_points.get)
+    hp_n = {k:v for k, v in hill_points.items() if k not in defeated}
+    return max(hp_n, key=hp_n.get)
 
 def get_possible_food():
     fs = []
