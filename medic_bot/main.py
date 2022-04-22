@@ -184,7 +184,7 @@ def handle_events(events):
         elif isinstance(ev, QueenAttackEvent):
             if ev.queen_player_index == my_index:
                 queen_ant_attacked = True
-            elif ev.queen_hp < stats.general.QUEEN_HEALTH * SNIPE_THRESHOLD / 100 and ev.queen_hp>0:
+            elif ev.queen_hp < stats.general.QUEEN_HEALTH * SNIPE_THRESHOLD / 100 and ev.queen_hp > 0 and not ev.queen_player_index in defeated:
                 if not ev.queen_player_index in snipe_target:
                     snipe_target.append(ev.queen_player_index)
         elif isinstance(ev, ZoneActiveEvent):
@@ -221,14 +221,13 @@ def handle_events(events):
         elif isinstance(ev, FoodTileDeactivateEvent):
             charged.pop(ev.pos)
         elif isinstance(ev, TeamDefeatedEvent):
-            snipe_target.remove(ev.defeated_index)
-
+            if ev.defeated_index in snipe_target:
+                snipe_target.remove(ev.defeated_index)
+            
             if ev.by_index != my_index:
                 hill_points[ev.by_index] = ev.new_hill_score
 
             defeated.add(ev.defeated_index)
-
-            print(snipe_target)
         elif isinstance(ev, SettlerScoreEvent):
             if ev.player_index != my_index:
                 hill_points[ev.player_index] += ev.score_amount
@@ -334,7 +333,6 @@ def handle_events(events):
         my_energy -= stats.ants.Settler.COST
 
     for snipers in snipe_squad:
-        print (snipe_target)
         if (len(snipe_target)>0):
             requests.append(GoalRequest(snipers, spawns[snipe_target[0]]))
         else:
