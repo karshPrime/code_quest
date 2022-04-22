@@ -370,6 +370,8 @@ def get_highest_score_index():
         return d[0][1]
 
     hp_n = {k:v for k, v in hill_points.items() if k not in defeated}
+    if len(hp_n) == 0:
+           return my_index
     return max(hp_n, key=hp_n.get)
 
 def get_possible_food():
