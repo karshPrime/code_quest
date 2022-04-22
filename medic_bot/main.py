@@ -252,7 +252,7 @@ def handle_events(events):
         my_energy >= 100
     ):
         curr_strat = "Snipe"
-        strategic_location = spawns[snipe_target[0]]
+        strategic_location = food[1]
     elif hill_active:
         if (
             (distance[curr_hill]/stats.ants.Settler.SPEED) > stats.ants.Settler.LIFESPAN*CLOSE_HILL_THRESHOLD/100 or
