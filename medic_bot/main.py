@@ -53,7 +53,7 @@ snipe_target = []
 
 snipe_squad = []
 
-CLOSE_HILL_THRESHOLD = 50
+CLOSE_HILL_THRESHOLD = 75
 SNIPE_THRESHOLD = 20
 
 def read_map(md, energy_info):
@@ -250,8 +250,8 @@ def handle_events(events):
             (distance[curr_hill]/stats.ants.Settler.SPEED) > stats.ants.Settler.LIFESPAN*CLOSE_HILL_THRESHOLD/100 or
             (distance[curr_hill]/stats.ants.Settler.SPEED) > time_hill_active*CLOSE_HILL_THRESHOLD/100
         ):
-            strategic_location = curr_hill
-            curr_strat = "Far_hill"
+            strategic_location = spawns[get_highest_score_index()]
+            curr_strat = "Econ_And_Harass"
         else:
             strategic_location = curr_hill
             curr_strat = "Close_hill"
