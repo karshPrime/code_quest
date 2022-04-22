@@ -1,7 +1,7 @@
 from random import Random, random
 from codequest22.server.ant import AntTypes
 import codequest22.stats as stats
-from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent, MoveEvent, FoodTileDeactivateEvent, FoodTileActiveEvent
+from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent, MoveEvent, FoodTileDeactivateEvent, FoodTileActiveEvent, SettlerScoreEvent
 from codequest22.server.requests import GoalRequest, SpawnRequest
 from collections import defaultdict
 
@@ -42,6 +42,7 @@ hill_active = False
 first_hill_active = False
 curr_hill = (0,0)
 enemy_cords = [None]*3
+hill_points = defaultdict(int)
 
 charged = {}
 ei = {}
@@ -115,13 +116,12 @@ def handle_failed_requests(requests):
             print(f"Medic: Request {req.__class__.__name__} failed. Reason: {req.reason}.")
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei
+    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, hill_points
     requests = []
     new_fighters = []
     to_send_home = set()
     dead_fighters = set()
     to_move = set()
-
 
     print ("\n"+str(my_energy)+"\n")
     queen_ant_attacked = False
@@ -204,6 +204,9 @@ def handle_events(events):
             charged[ev.pos] = ev.num_ticks
         elif isinstance(ev, FoodTileDeactivateEvent):
             charged.pop(ev.pos)
+        elif isinstance(ev, SettlerScoreEvent):
+            if ev.player_index != my_index:
+                hill_points[ev.player_index] += ev.score_amount
 
     # Send our wounded veterans home
     for t in to_send_home:
@@ -211,7 +214,7 @@ def handle_events(events):
 
     # Move fighters who have targets that have also moved
     for f, pos in to_move:
-        if f not in dead_fighters:
+        if f not in dead_fighters and f not in to_send_home:
             requests.append(GoalRequest(f, pos))
 
     strategic_location = (0,0)
@@ -288,6 +291,12 @@ def handle_events(events):
     for k in charged.keys():
         charged[k] -= 1
     return requests
+
+def get_highest_score_index():
+    if len(hill_points) == 0:
+        return None
+
+    return max(hill_points, key=hill_points.get)
 
 def get_possible_food():
     fs = []

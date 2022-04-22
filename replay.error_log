@@ -1,38 +1,20 @@
 Traceback (most recent call last):
-  File "C:\Python310\lib\site-packages\codequest22\visual\game.py", line 168, in run_visual
-    arcade.run()
-  File "C:\Python310\lib\site-packages\arcade\window_commands.py", line 276, in run
-    pyglet.app.run()
-  File "C:\Python310\lib\site-packages\pyglet\app\__init__.py", line 107, in run
-    event_loop.run(interval)
-  File "C:\Python310\lib\site-packages\pyglet\app\base.py", line 184, in run
-    timeout = self.idle()
-  File "C:\Python310\lib\site-packages\pyglet\app\base.py", line 245, in idle
-    self.clock.call_scheduled_functions(dt)
-  File "C:\Python310\lib\site-packages\pyglet\clock.py", line 275, in call_scheduled_functions
-    item.func(now - item.last_ts, *item.args, **item.kwargs)
-  File "C:\Python310\lib\site-packages\arcade\application.py", line 292, in _dispatch_updates
-    self.dispatch_event('on_update', delta_time)
-  File "C:\Python310\lib\site-packages\pyglet\window\__init__.py", line 1327, in dispatch_event
-    super().dispatch_event(*args)
-  File "C:\Python310\lib\site-packages\pyglet\event.py", line 422, in dispatch_event
-    if getattr(self, event_type)(*args):
-  File "C:\Python310\lib\site-packages\codequest22\visual\screen.py", line 708, in on_update
-    GameStateHandler.tick(delta_time)
-  File "C:\Python310\lib\site-packages\codequest22\visual\game.py", line 82, in tick
-    cls.sm.spawnAnt(ant_obj)
-  File "C:\Python310\lib\site-packages\codequest22\visual\screen.py", line 147, in spawnAnt
-    sprite = Ant(pos, ant.color, self.scaling * 0.015)
-  File "C:\Python310\lib\site-packages\codequest22\visual\screen.py", line 74, in __init__
-    self.c_square = AntShape(pos, c)
-  File "C:\Python310\lib\site-packages\codequest22\visual\screen.py", line 30, in __init__
-    self.shape_list.append(arcade.create_rectangle_filled(0, 0, 2, 2, c))
-  File "C:\Python310\lib\site-packages\arcade\buffered_draw_commands.py", line 297, in create_rectangle_filled
-    return create_rectangle(center_x, center_y, width, height,
-  File "C:\Python310\lib\site-packages\arcade\buffered_draw_commands.py", line 430, in create_rectangle
-    shape = create_line_generic(data, color, shape_mode, border_width)
-  File "C:\Python310\lib\site-packages\arcade\buffered_draw_commands.py", line 138, in create_line_generic
-    colors = [get_four_byte_color(color)] * len(point_list)
-  File "C:\Python310\lib\site-packages\arcade\drawing_support.py", line 59, in get_four_byte_color
-    raise ValueError("This isn't a 3 or 4 byte color")
-ValueError: This isn't a 3 or 4 byte color
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/visual/game.py", line 166, in run_visual
+    GameStateHandler.init()
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/visual/game.py", line 49, in init
+    cls.sm = ScreenManager(*cls.SCREEN_RES)
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/visual/screen.py", line 121, in __init__
+    super().__init__(width, height, title)
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/arcade/application.py", line 125, in __init__
+    super().__init__(width=width, height=height, caption=title,
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/window/xlib/__init__.py", line 168, in __init__
+    super(XlibWindow, self).__init__(*args, **kwargs)
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/window/__init__.py", line 561, in __init__
+    context = config.create_context(gl.current_context)
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/gl/xlib.py", line 204, in create_context
+    return XlibContextARB(self, share)
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/gl/xlib.py", line 314, in __init__
+    super(XlibContext13, self).__init__(config, share)
+  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/pyglet/gl/xlib.py", line 218, in __init__
+    raise gl.ContextException('Could not create GL context')
+pyglet.gl.ContextException: Could not create GL context
