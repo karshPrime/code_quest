@@ -3,6 +3,7 @@ import codequest22.stats as stats
 from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent, MoveEvent, FoodTileDeactivateEvent, FoodTileActiveEvent, TeamDefeatedEvent, SettlerScoreEvent
 from codequest22.server.requests import GoalRequest, SpawnRequest
 from collections import defaultdict
+from random import randint
 
 DEFAULT_MAP = [['W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W'], ['W', '.', '.', '.', '.', 'F', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'F', '.', '.', '.', '.', 'W'], ['.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.'], ['.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', 'F', 'F', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.'], ['.', '.', 'R', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'Y', '.', '.'], ['.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.'], ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'], ['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'], ['Z', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'F', '.', '.', 'Z', 'Z', '.', '.', 'F', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'Z'], ['Z', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'F', '.', '.', 'Z', 'Z', '.', '.', 'F', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'Z'], ['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'], ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'], ['.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.'], ['.', '.', 'G', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'B', '.', '.'], ['.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', 'F', 'F', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.'], ['.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.'], ['W', '.', '.', '.', '.', 'F', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'F', '.', '.', '.', '.', 'W'], ['W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W']]
 
@@ -309,7 +310,7 @@ def handle_events(events):
         strategic_location = spawns[get_highest_score_index()]
         curr_strat = "Rush"
     elif not first_hill_active:
-        strategic_location = spawns[get_highest_score_index()]      
+        strategic_location = food[randint(1,3)]      
         curr_strat = "Early_game"
     else:
         strategic_location = spawns[get_highest_score_index()]
@@ -318,34 +319,47 @@ def handle_events(events):
     worker_to_spawn_this_tick = int(STRATEGY[curr_strat][0] * stats.general.MAX_SPAWNS_PER_TICK/100)
     fighter_to_spawn_this_tick = int(STRATEGY[curr_strat][1] * stats.general.MAX_SPAWNS_PER_TICK/100)
     settler_to_spawn_this_tick = int(STRATEGY[curr_strat][2] * stats.general.MAX_SPAWNS_PER_TICK/100)
+
+    need_to_spawn_defender = False
+
+    if on_default_map and curr_strat == "Early_game":
+            for k, v in default_map_defenders.items():
+                if not v:
+                    need_to_spawn_defender = True
+                    break
     # Can I spawn ants?
     i = 0
     while (
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
         (
             my_energy >= stats.ants.Fighter.COST + 100 or
-            (len(new_fighters) > 0 and my_energy >= stats.ants.Fighter.COST)
+            (len(new_fighters) > 0 and my_energy >= stats.ants.Fighter.COST) or
+            (need_to_spawn_defender and my_energy >= stats.ants.Fighter.COST + stats.ants.Worker.COST)
         ) and
         fighter_to_spawn_this_tick > 0
     ):
-        if on_default_map and curr_strat == "Attacked":
+        spawned = False
+        if on_default_map and curr_strat == "Early_game":
             for k, v in default_map_defenders.items():
                 if not v:
                     default_map_defenders[k] = True
                     requests.append(SpawnRequest(AntTypes.FIGHTER, id=k, color=None, goal=default_map_corner))
+                    spawned = True
+                    print("Spawned defender")
                     break
-        elif i < len(new_fighters):
-            ant_id, p_id, f_id, ant_pos = new_fighters[i]
-            fighters[(ant_id, p_id)].add(f_id)
-            requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
-            i += 1
-        elif curr_strat=="Snipe":
-            id = "Snipe-"+str(fighter_id)
-            requests.append(SpawnRequest(AntTypes.FIGHTER, id=id))
-            fighter_id+=1
-            snipe_squad.append(id)
-        else:
-            requests.append(SpawnRequest(AntTypes.FIGHTER, color=None, goal=strategic_location))
+        if not spawned:
+            if i < len(new_fighters):
+                ant_id, p_id, f_id, ant_pos = new_fighters[i]
+                fighters[(ant_id, p_id)].add(f_id)
+                requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
+                i += 1
+            elif curr_strat=="Snipe":
+                id = "Snipe-"+str(fighter_id)
+                requests.append(SpawnRequest(AntTypes.FIGHTER, id=id))
+                fighter_id+=1
+                snipe_squad.append(id)
+            else:
+                requests.append(SpawnRequest(AntTypes.FIGHTER, color=None, goal=strategic_location))
 
         my_energy -= stats.ants.Fighter.COST        
         fighter_to_spawn_this_tick -= 1
