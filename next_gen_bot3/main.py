@@ -1,4 +1,3 @@
-from random import Random, random
 from codequest22.server.ant import AntTypes
 import codequest22.stats as stats
 from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, SpawnEvent, QueenAttackEvent, ZoneActiveEvent, ZoneDeactivateEvent, MoveEvent, FoodTileDeactivateEvent, FoodTileActiveEvent, TeamDefeatedEvent, SettlerScoreEvent
@@ -27,7 +26,6 @@ food_workers_limit = {}
 distance = {}
 closest_site = None
 total_ants = 0
-dead_workers = {}
 STRATEGY = {
     "Early_game": [80,20,0],
     "Attacked": [20, 80,0],
@@ -66,7 +64,7 @@ def read_map(md, energy_info):
         for x in range(len(map_data[0])):
             if map_data[y][x] == "F":
                 food.append((x, y))
-                food_workers[(x,y)] = 0
+                food_workers[(x,y)] = []
             if map_data[y][x] in "RBYG":
                 spawns["RBYG".index(map_data[y][x])] = (x, y)
     # Read map is called after read_index
@@ -126,7 +124,7 @@ def handle_failed_requests(requests):
             print(f"Medic: Request {req.__class__.__name__} failed. Reason: {req.reason}.")
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants, dead_workers, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, time_hill_active, snipe_target, snipe_squad, hill_points, defeated
+    global food_workers, my_energy, total_ants, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, time_hill_active, snipe_target, snipe_squad, hill_points, defeated
     requests = []
     new_fighters = []
     to_send_home = set()
@@ -144,20 +142,20 @@ def handle_events(events):
                 my_energy = ev.total_energy
         elif isinstance(ev, ProductionEvent):
             if ev.player_index == my_index:
-                # One of my worker ants just made it to the food site! Let's send them back to the Queen.
-                food_location = (round((ev.ant_str['info']['position'][1])), round((ev.ant_str['info']['position'][0])))
+                for location in food_workers:
+                    if (ev.ant_id) in food_workers[location]:
+                        food_workers[location].remove(ev.ant_id)
 
-                food_workers[food_location] -= 1
 
                 requests.append(GoalRequest(ev.ant_id, spawns[my_index]))
         elif isinstance(ev, DieEvent):
             if ev.player_index == my_index:
                 # One of my workers just died :(
                 total_ants -= 1
-                try:
-                    food_workers[dead_workers[ev.ant_id]] -= 1
-                except:
-                    pass
+                
+                for location in food_workers:
+                    if (ev.ant_id) in food_workers[location]:
+                        food_workers[location].remove(ev.ant_id)
 
                 if ev.ant_id in to_send_home:
                     to_send_home.remove(ev.ant_id)
@@ -357,6 +355,7 @@ def handle_events(events):
 
     if hill_active:
         time_hill_active -= 1
+
     return requests
 
 def get_highest_score_index():
@@ -377,7 +376,7 @@ def get_highest_score_index():
 def get_possible_food():
     fs = []
     for i in range(len(food)):
-        if food_workers[food[i]] <= food_workers_limit[food[i]]:
+        if len(food_workers[food[i]]) <= food_workers_limit[food[i]]:
             fs.append(i)
 
     if len(fs) == 0:
@@ -396,13 +395,15 @@ def get_patrol_location():
     return food[i]
 
 def send_worker_ant(ant_id=None):
-    global food_workers, my_energy
+    global food_workers, my_energy, fighter_id
     i = get_possible_food()
 
-    food_workers[food[i]] += 1
     if ant_id == None:
+        id = "worker_" + str(fighter_id)
+        food_workers[food[i]].append(id)
+        fighter_id+=1
         my_energy -= stats.ants.Worker.COST
-        return SpawnRequest(AntTypes.WORKER, id=None, color=None, goal=food[i])
+        return SpawnRequest(AntTypes.WORKER, id=id, color=None, goal=food[i])
     else:
-        dead_workers[ant_id] = food[i]
+        food_workers[food[i]].append(ant_id)
         return GoalRequest(ant_id, position=food[i])
