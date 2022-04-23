@@ -328,7 +328,7 @@ def handle_events(events):
         ) and
         fighter_to_spawn_this_tick > 0
     ):
-        if on_default_map and curr_start == "Attacked":
+        if on_default_map and curr_strat == "Attacked":
             for k, v in default_map_defenders.items():
                 if not v:
                     default_map_defenders[k] = True
