@@ -292,7 +292,10 @@ def handle_events(events):
         my_energy >= 100
     ):
         curr_strat = "Snipe"
-        strategic_location = food[1]
+        if len(food) == 1:
+            strategic_location = food[0]
+        else:
+            strategic_location = food[1]
     elif hill_active:
         if (
             (distance[curr_hill]/stats.ants.Settler.SPEED) > stats.ants.Settler.LIFESPAN*CLOSE_HILL_THRESHOLD/100 or
@@ -310,7 +313,10 @@ def handle_events(events):
         strategic_location = spawns[get_highest_score_index()]
         curr_strat = "Rush"
     elif not first_hill_active:
-        strategic_location = food[randint(1,3)]      
+        if len(food) == 1:
+            strategic_location = food[0] 
+        else:
+            strategic_location = food[randint(1, min(3, len(food) - 1))]      
         curr_strat = "Early_game"
     else:
         strategic_location = spawns[get_highest_score_index()]
@@ -320,46 +326,42 @@ def handle_events(events):
     fighter_to_spawn_this_tick = int(STRATEGY[curr_strat][1] * stats.general.MAX_SPAWNS_PER_TICK/100)
     settler_to_spawn_this_tick = int(STRATEGY[curr_strat][2] * stats.general.MAX_SPAWNS_PER_TICK/100)
 
-    need_to_spawn_defender = False
-
+    defenders_to_spawn = []
     if on_default_map and curr_strat == "Early_game":
-            for k, v in default_map_defenders.items():
-                if not v:
-                    need_to_spawn_defender = True
-                    break
+        for k, v in default_map_defenders.items():
+            if not v:
+                defenders_to_spawn.append(k)
+                break
+
     # Can I spawn ants?
     i = 0
+    j = 0
     while (
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
         (
             my_energy >= stats.ants.Fighter.COST + 100 or
             (len(new_fighters) > 0 and my_energy >= stats.ants.Fighter.COST) or
-            (need_to_spawn_defender and my_energy >= stats.ants.Fighter.COST + stats.ants.Worker.COST)
+            (len(defenders_to_spawn) > 0 and my_energy >= stats.ants.Fighter.COST + stats.ants.Worker.COST)
         ) and
         fighter_to_spawn_this_tick > 0
     ):
-        spawned = False
-        if on_default_map and curr_strat == "Early_game":
-            for k, v in default_map_defenders.items():
-                if not v:
-                    default_map_defenders[k] = True
-                    requests.append(SpawnRequest(AntTypes.FIGHTER, id=k, color=None, goal=default_map_corner))
-                    spawned = True
-                    print("Spawned defender")
-                    break
-        if not spawned:
-            if i < len(new_fighters):
-                ant_id, p_id, f_id, ant_pos = new_fighters[i]
-                fighters[(ant_id, p_id)].add(f_id)
-                requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
-                i += 1
-            elif curr_strat=="Snipe":
-                id = "Snipe-"+str(fighter_id)
-                requests.append(SpawnRequest(AntTypes.FIGHTER, id=id))
-                fighter_id+=1
-                snipe_squad.append(id)
-            else:
-                requests.append(SpawnRequest(AntTypes.FIGHTER, color=None, goal=strategic_location))
+        if j < len(defenders_to_spawn):
+            default_map_defenders[defenders_to_spawn[j]] = True
+            print("Spawning defender")
+            requests.append(SpawnRequest(AntTypes.FIGHTER, id=defenders_to_spawn[j], color=None, goal=default_map_corner))
+            j += 1
+        elif i < len(new_fighters):
+            ant_id, p_id, f_id, ant_pos = new_fighters[i]
+            fighters[(ant_id, p_id)].add(f_id)
+            requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
+            i += 1
+        elif curr_strat=="Snipe":
+            id = "Snipe-"+str(fighter_id)
+            requests.append(SpawnRequest(AntTypes.FIGHTER, id=id))
+            fighter_id+=1
+            snipe_squad.append(id)
+        else:
+            requests.append(SpawnRequest(AntTypes.FIGHTER, color=None, goal=strategic_location))
 
         my_energy -= stats.ants.Fighter.COST        
         fighter_to_spawn_this_tick -= 1
