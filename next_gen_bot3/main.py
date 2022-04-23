@@ -4,7 +4,10 @@ from codequest22.server.events import DepositEvent, DieEvent, ProductionEvent, S
 from codequest22.server.requests import GoalRequest, SpawnRequest
 from collections import defaultdict
 
+DEFAULT_MAP = [['W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W'], ['W', '.', '.', '.', '.', 'F', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'F', '.', '.', '.', '.', 'W'], ['.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.'], ['.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', 'F', 'F', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.'], ['.', '.', 'R', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'Y', '.', '.'], ['.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.'], ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'], ['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'], ['Z', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'F', '.', '.', 'Z', 'Z', '.', '.', 'F', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'Z'], ['Z', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'F', '.', '.', 'Z', 'Z', '.', '.', 'F', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'Z'], ['W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W'], ['.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'], ['.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.'], ['.', '.', 'G', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'B', '.', '.'], ['.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', 'F', 'F', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W', '.', '.', '.', '.', '.'], ['.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.'], ['W', '.', '.', '.', '.', 'F', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', '.', 'W', '.', '.', '.', '.', '.', '.', 'W', '.', 'F', '.', '.', '.', '.', 'W'], ['W', 'W', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', 'W', '.', '.', '.', '.', '.', 'W', 'W']]
+
 FIGHTER_RADIUS_MULT = 10
+DEFAULT_MAP_DEFENDERS_COUNT = 5
 
 fighters = defaultdict(set)
 fighter_id = 10000
@@ -17,6 +20,9 @@ def read_index(player_index, n_players):
     global my_index
     my_index = player_index
 
+on_default_map = False
+default_map_corner = (0, 0)
+default_map_defenders = {}
 my_energy = stats.general.STARTING_ENERGY
 map_data = {}
 spawns = [None]*4
@@ -56,7 +62,7 @@ CLOSE_HILL_THRESHOLD = 75
 SNIPE_THRESHOLD = 20
 
 def read_map(md, energy_info):
-    global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit, enemy_cords, ei
+    global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit, enemy_cords, ei, on_default_map, default_map_corner
 
     ei = energy_info
     map_data = md
@@ -117,6 +123,16 @@ def read_map(md, energy_info):
         food_workers_limit[food_place] = stats.energy.PER_TICK + (distance[food_place]/stats.ants.Worker.SPEED / stats.energy.DELAY)
     enemy_cords = [x for x in spawns if x != spawns[my_index]]
 
+    if md == DEFAULT_MAP:
+        on_default_map = True 
+        s_x, s_y = spawns[my_index]
+        
+        d_x = 2 if s_x == 2 else -2
+        d_y = 2 if s_y == 4 else -2
+
+        default_map_corner = (s_x + d_x, s_y + d_y)
+
+
 def handle_failed_requests(requests):
     global my_energy
     for req in requests:
@@ -124,7 +140,7 @@ def handle_failed_requests(requests):
             print(f"Medic: Request {req.__class__.__name__} failed. Reason: {req.reason}.")
 
 def handle_events(events):
-    global food_workers, my_energy, total_ants, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, time_hill_active, snipe_target, snipe_squad, hill_points, defeated
+    global food_workers, my_energy, total_ants, hill_active, first_hill_active, curr_strat, curr_hill, fighters, fighter_id, ei, time_hill_active, snipe_target, snipe_squad, hill_points, defeated, default_map_defenders
     requests = []
     new_fighters = []
     to_send_home = set()
@@ -156,6 +172,9 @@ def handle_events(events):
                 for location in food_workers:
                     if (ev.ant_id) in food_workers[location]:
                         food_workers[location].remove(ev.ant_id)
+
+                if ev.ant_id in default_map_defenders:
+                    default_map_defenders.pop(ev.ant_id)
 
                 if ev.ant_id in to_send_home:
                     to_send_home.remove(ev.ant_id)
@@ -248,6 +267,11 @@ def handle_events(events):
                 if ev.player_index not in hill_points and ev.player_index not in defeated:
                     hill_points[ev.player_index] = 0
 
+    if on_default_map:
+        if len(default_map_defenders) < DEFAULT_MAP_DEFENDERS_COUNT:
+            default_map_defenders[fighter_id] = False
+            fighter_id += 1
+
     # Send our wounded veterans home
     for t in to_send_home:
         requests.append(GoalRequest(t, spawns[my_index]))
@@ -304,7 +328,13 @@ def handle_events(events):
         ) and
         fighter_to_spawn_this_tick > 0
     ):
-        if i < len(new_fighters):
+        if on_default_map and curr_start == "Attacked":
+            for k, v in default_map_defenders.items():
+                if not v:
+                    default_map_defenders[k] = True
+                    requests.append(SpawnRequest(AntTypes.FIGHTER, id=k, color=None, goal=default_map_corner))
+                    break
+        elif i < len(new_fighters):
             ant_id, p_id, f_id, ant_pos = new_fighters[i]
             fighters[(ant_id, p_id)].add(f_id)
             requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
