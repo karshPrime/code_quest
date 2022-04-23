@@ -400,7 +400,8 @@ def get_highest_score_index():
 
     hp_n = {k:v for k, v in hill_points.items() if k not in defeated}
     if len(hp_n) == 0:
-           return my_index
+        print("This should never happen!!!")
+        return my_index
     return max(hp_n, key=hp_n.get)
 
 def get_possible_food():
