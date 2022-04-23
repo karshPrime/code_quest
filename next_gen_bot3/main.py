@@ -360,8 +360,8 @@ def handle_events(events):
         total_ants < stats.general.MAX_ANTS_PER_PLAYER and 
         (
             my_energy >= stats.ants.Fighter.COST + 100 or
-            (len(new_fighters) > 0 and my_energy >= stats.ants.Fighter.COST) or
-            (len(defenders_to_spawn) > 0 and my_energy >= stats.ants.Fighter.COST + stats.ants.Worker.COST)
+            (len(new_fighters) > 0 and i < len(new_fighters) and my_energy >= stats.ants.Fighter.COST) or
+            (len(defenders_to_spawn) > 0 and j < len(defenders_to_spawn) and my_energy >= stats.ants.Fighter.COST + stats.ants.Worker.COST)
         ) and
         fighter_to_spawn_this_tick > 0
     ):
@@ -371,6 +371,7 @@ def handle_events(events):
             requests.append(SpawnRequest(AntTypes.FIGHTER, id=defenders_to_spawn[j], color=None, goal=default_map_corner))
             j += 1
         elif i < len(new_fighters):
+            print("Spawning fighter")
             ant_id, p_id, f_id, ant_pos = new_fighters[i]
             fighters[(ant_id, p_id)].add(f_id)
             requests.append(SpawnRequest(AntTypes.FIGHTER, id=f_id, color=None, goal=ant_pos))
@@ -455,13 +456,22 @@ def get_possible_food():
     if len(fs) == 0:
         return 0
 
-    best_i = (0, 0)
-    for i, f in enumerate(fs):
+    values = []
+    for f in fs:
         if food[f] in charged:
-            if ei[food[f]] * 2 > best_i[1]:
-                best_i = i, ei[food[f]] * 2
+            distance_to_overcharged = distance[food[f]] / stats.ants.Worker.SPEED
+            ticks_left = charged[food[f]]
 
-    return fs[best_i[0]]
+            if ticks_left > distance_to_overcharged:
+                values.append((f, ei[food[f]] * 2))
+        else:
+            values.append((f, ei[food[f]]))
+
+
+    values_mapped = [(v / ((distance[food[f]]**2) / stats.ants.Worker.SPEED), f) for f, v in values]
+    values_mapped_sorted = sorted(values_mapped, key=lambda item: item[0])
+
+    return values_mapped_sorted[-1][1]
 
 def get_patrol_location():
     i = get_possible_food()

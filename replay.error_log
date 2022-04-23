@@ -1,13 +1,21 @@
 Traceback (most recent call last):
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/client/__init__.py", line 11, in run_client
-    runner.load_bot(bot_path)
-  File "/home/aqua/code/code_quest/env/lib/python3.8/site-packages/codequest22/client/runner.py", line 58, in load_bot
-    spec.loader.exec_module(module)
-  File "<frozen importlib._bootstrap_external>", line 844, in exec_module
-  File "<frozen importlib._bootstrap_external>", line 981, in get_code
-  File "<frozen importlib._bootstrap_external>", line 911, in source_to_code
-  File "<frozen importlib._bootstrap>", line 219, in _call_with_frames_removed
-  File "/home/aqua/code/code_quest/code_quest/medic_bot/main.py", line 245
-    if ev.player_index not in hill_points and in ev.player_index not in defeated:
-                                              ^
-SyntaxError: invalid syntax
+  File "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/arcade/sound.py", line 144, in load_sound
+    sound = Sound(file_name, streaming)
+  File "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/arcade/sound.py", line 26, in __init__
+    file_name = resolve_resource_path(file_name)
+  File "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/arcade/resources/__init__.py", line 39, in resolve_resource_path
+    raise FileNotFoundError(f"Cannot locate resource : {path}")
+FileNotFoundError: Cannot locate resource : /home/worker/code/code_quest/venv/lib/python3.9/site-packages/codequest22/visual/sounds/deposit_energy.wav
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/codequest22/visual/game.py", line 167, in run_visual
+    GameStateHandler.init()
+  File "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/codequest22/visual/game.py", line 49, in init
+    cls.sm = ScreenManager(*cls.SCREEN_RES)
+  File "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/codequest22/visual/screen.py", line 136, in __init__
+    self.deposit_energy_sound = arcade.load_sound(f("sounds/deposit_energy.wav"))
+  File "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/arcade/sound.py", line 147, in load_sound
+    raise FileNotFoundError(f'Unable to load sound file: "{file_name}". Exception: {ex}')
+FileNotFoundError: Unable to load sound file: "/home/worker/code/code_quest/venv/lib/python3.9/site-packages/codequest22/visual/sounds/deposit_energy.wav". Exception: Cannot locate resource : /home/worker/code/code_quest/venv/lib/python3.9/site-packages/codequest22/visual/sounds/deposit_energy.wav
