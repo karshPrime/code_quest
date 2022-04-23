@@ -126,9 +126,9 @@ def read_map(md, energy_info):
         food_workers_limit[food_place] = stats.energy.PER_TICK + (distance[food_place]/stats.ants.Worker.SPEED / stats.energy.DELAY)
     enemy_cords = [x for x in spawns if x != spawns[my_index]]
 
-    for i in range(4):
-        if distance[spawns[i]] > stats.ants.Fighter.LIFESPAN * stats.ants.Fighter.SPEED:
-            unreachable_enemies.append(i)
+    # for i in range(4):
+    #     if distance[spawns[i]] > stats.ants.Fighter.LIFESPAN * stats.ants.Fighter.SPEED:
+    #         unreachable_enemies.append(i)
 
     print (unreachable_enemies)
     if md == DEFAULT_MAP:
