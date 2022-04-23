@@ -59,11 +59,13 @@ snipe_target = []
 
 snipe_squad = []
 
-CLOSE_HILL_THRESHOLD = 75
-SNIPE_THRESHOLD = 20
+unreachable_enemies = []
+
+CLOSE_HILL_THRESHOLD = 80
+SNIPE_THRESHOLD = 25
 
 def read_map(md, energy_info):
-    global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit, enemy_cords, ei, on_default_map, default_map_corner
+    global map_data, spawns, food, distance, closest_site, food_workers, food_workers_limit, enemy_cords, ei, on_default_map, default_map_corner, unreachable_enemies
 
     ei = energy_info
     map_data = md
@@ -124,6 +126,11 @@ def read_map(md, energy_info):
         food_workers_limit[food_place] = stats.energy.PER_TICK + (distance[food_place]/stats.ants.Worker.SPEED / stats.energy.DELAY)
     enemy_cords = [x for x in spawns if x != spawns[my_index]]
 
+    for i in range(4):
+        if distance[spawns[i]] > stats.ants.Fighter.LIFESPAN * stats.ants.Fighter.SPEED:
+            unreachable_enemies.append(i)
+
+    print (unreachable_enemies)
     if md == DEFAULT_MAP:
         on_default_map = True 
         s_x, s_y = spawns[my_index]
@@ -208,7 +215,7 @@ def handle_events(events):
         elif isinstance(ev, QueenAttackEvent):
             if ev.queen_player_index == my_index:
                 queen_ant_attacked = True
-            elif ev.queen_hp < stats.general.QUEEN_HEALTH * SNIPE_THRESHOLD / 100 and ev.queen_hp > 0 and not ev.queen_player_index in defeated:
+            elif ev.queen_hp < stats.general.QUEEN_HEALTH * SNIPE_THRESHOLD / 100 and ev.queen_hp > 0 and not ev.queen_player_index in defeated and not ev.queen_player_index in unreachable_enemies:
                 if not ev.queen_player_index in snipe_target:
                     snipe_target.append(ev.queen_player_index)
 
@@ -284,6 +291,8 @@ def handle_events(events):
 
     strategic_location = (0,0)
 
+    enemy_to_attack = get_highest_score_index()
+
     if queen_ant_attacked:
         strategic_location = spawns[my_index]
         curr_strat = "Attacked"
@@ -301,7 +310,10 @@ def handle_events(events):
             (distance[curr_hill]/stats.ants.Settler.SPEED) > stats.ants.Settler.LIFESPAN*CLOSE_HILL_THRESHOLD/100 or
             (distance[curr_hill]/stats.ants.Settler.SPEED) > time_hill_active*CLOSE_HILL_THRESHOLD/100
         ):
-            strategic_location = spawns[get_highest_score_index()]
+            if enemy_to_attack == None:
+                strategic_location = food[-1]    
+            else:
+                strategic_location = spawns[get_highest_score_index()]
             curr_strat = "Econ_And_Harass"
         else:
             strategic_location = curr_hill
@@ -310,8 +322,12 @@ def handle_events(events):
         my_energy >= stats.general.MAX_ENERGY_STORED - 50 or
         (curr_strat == "Rush" and my_energy >= 100)
     ):
-        strategic_location = spawns[get_highest_score_index()]
-        curr_strat = "Rush"
+        if enemy_to_attack == None:
+            strategic_location = food[-1]
+            curr_strat = "Econ_And_Harass"
+        else:
+            strategic_location = spawns[get_highest_score_index()]
+            curr_strat = "Rush"
     elif not first_hill_active:
         if len(food) == 1:
             strategic_location = food[0] 
@@ -319,7 +335,11 @@ def handle_events(events):
             strategic_location = food[randint(1, min(3, len(food) - 1))]      
         curr_strat = "Early_game"
     else:
-        strategic_location = spawns[get_highest_score_index()]
+        if enemy_to_attack == None:
+            strategic_location = food[-1]
+        else:
+            strategic_location = spawns[get_highest_score_index()]
+
         curr_strat = "Econ_And_Harass"
 
     worker_to_spawn_this_tick = int(STRATEGY[curr_strat][0] * stats.general.MAX_SPAWNS_PER_TICK/100)
@@ -406,18 +426,24 @@ def handle_events(events):
 
 def get_highest_score_index():
     if len(hill_points) == 0:
-        return [i for i, x in enumerate(spawns) if i != my_index and i not in defeated][0]
+        neighbors = [i for i, x in enumerate(spawns) if i != my_index and i not in defeated and i not in unreachable_enemies]
+        if len(neighbors) > 0:
+            return neighbors[0]
+        else:
+            return None 
 
     have_points = [x for x in hill_points.values() if x > 0]
     if len(have_points) == 0:
-        d = sorted([(distance[spawns[x]], x) for x in hill_points.keys() if x != my_index and x not in defeated], key=lambda k: k[0])
+        d = sorted([(distance[spawns[x]], x) for x in hill_points.keys() if x != my_index and x not in defeated and x not in unreachable_enemies], key=lambda k: k[0])
 
-        return d[0][1]
+        if len(d) > 0:
+            return d[0][1]
+        else:
+            return None
 
-    hp_n = {k:v for k, v in hill_points.items() if k not in defeated}
+    hp_n = {k:v for k, v in hill_points.items() if k not in defeated and k not in unreachable_enemies}
     if len(hp_n) == 0:
-        print("This should never happen!!!")
-        return my_index
+        return None
     return max(hp_n, key=hp_n.get)
 
 def get_possible_food():
